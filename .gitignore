@@ -338,3 +338,6 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database
 healthchecksdb
+/dist/data
+/dist/client_ftp
+/dist/server_ftp
