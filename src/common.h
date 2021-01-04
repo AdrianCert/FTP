@@ -19,15 +19,35 @@
 
 #define DEBUG 1
 #define MAXSIZE 512
-#define CLIENT_PORT_ID 30020
+#define CLIENT_PORT 30020
 
-struct command {
-	char arg[255];
-	char code[5];
+struct nfo {
+    struct sockaddr_in addr;
+    int sock_control;
+    int sock_data;
+    char curent_dir[100];
+    int flags;
 };
 
-enum err_code
-{
+struct command {
+	char code;
+	char arg[255];
+};
+
+enum command_codes {
+    cmd_begin = 0x20,
+    cmd_list, // list
+    cmd_tree, // tree
+    cmd_get, // get <filename>
+    cmd_post, // push <filename>
+    cmd_mdir, // mkdir <foldername>
+    cmd_user,
+    cmd_pass,
+    cmd_quit, // quit
+    cmd_end
+};
+
+enum err_code {
     err_incorrect_handling,
     err_net,
     err_file,
@@ -46,7 +66,7 @@ int socket_create(int port);
  * Create new socket for incoming client connection request
  * Returns -1 on error, or fd of newly created socket
  */
-int socket_accept(int sock_listen);
+int socket_accept(int sd);
 
 /**
  * Connect to remote host at given port
@@ -67,6 +87,20 @@ int recv_data(int sockfd, char* buf, int bufsize);
  */
 int send_response(int sockfd, int rc);
 
+/**
+ * Recive a file on sock data
+ * Save in path, comunicate with sock_control
+ * return 0 for succes
+ */
+int file_recive(int sock_data, int sock_control, char * path);
+
+/**
+ * Recive a file on sock data
+ * Save in path, comunicate with sock_control
+ * return 0 for succes
+ */
+int file_send(int sock_data, int sock_control, char * path);
+
 /************************************************************/
 /******************** UTILITY FUNCTIONS *********************/
 /************************************************************/
@@ -76,6 +110,11 @@ int send_response(int sockfd, int rc);
  * characters from a string
  */
 void strtrim(char * str);
+
+/**
+ * Lower each string caractes.
+ */
+void strlow(char *str);
 
 /** 
  * Read input from command line
@@ -93,4 +132,13 @@ int readconfig(char * dest, char * path, char * key);
  */
 void tree(char *basePath, const int root, FILE * file);
 
+/**
+ * Encript mess with key
+ */
+void cripto(char * mess, char * key, int encoding);
+
+/**
+ * Return a key
+ */
+char * statkey( char * srt);
 #endif

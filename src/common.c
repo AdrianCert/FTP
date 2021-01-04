@@ -94,6 +94,130 @@ int recv_data(int sockfd, char *buf, int bufsize)
     return num_bytes;
 }
 
+int send_response(int sockfd, int rc)
+{
+    int conv = htonl(rc);
+    if (send(sockfd, &conv, sizeof conv, 0) < 0)
+    {
+        perror("error sending...\n");
+        return -1;
+    }
+    return 0;
+}
+
+void print_reply(int rc)
+{
+    switch (rc)
+    {
+    case 220:
+        printf("220 Welcome, server ready.\n");
+        break;
+    case 221:
+        printf("221 Goodbye!\n");
+        break;
+    case 226:
+        printf("226 Closing data connection. Requested file action successful.\n");
+        break;
+    case 550:
+        printf("550 Requested action not taken. File unavailable.\n");
+        break;
+    case 502:
+        printf("502 Command not implemented.\n");
+        break;
+    default:
+        printf("%d Server response", rc);
+        break;
+    }
+}
+
+int file_recive(int sock_data, int sock_control, char *path)
+{
+    char data[MAXSIZE];
+    size_t bread;
+    FILE *file = fopen(path, "w");
+    // wait for reply (is file valid)
+
+    // if (!file)
+    // {
+    //     // send error code (550 Requested action not taken)
+    //     send_response(sock_control, 550);
+    //     return -1;
+    // }
+
+    while ((bread = recv(sock_data, data, MAXSIZE, 0)) > 0)
+    {
+        fwrite(data, 1, bread, file);
+    }
+
+    if (bread < 0)
+    {
+        perror("error\n");
+        fclose(file);
+        return -2;
+    }
+
+    fclose(file);
+    return 0;
+}
+
+int file_send(int sock_data, int sock_control, char *path)
+{
+    char data[MAXSIZE];
+    size_t bread;
+    FILE *file = NULL;
+
+    char fpath[500] = "data/";
+    strncat(fpath, path, strlen(path));
+    file = fopen(fpath, "r");
+    fflush(stdout);
+    if (!file)
+    {
+        send_response(sock_control, 550);
+        return -1;
+    }
+
+    printf("##%s##\n", fpath);
+    // send okay (150 File status okay)
+    send_response(sock_control, 150);
+
+    do
+    {
+        bread = fread(data, 1, MAXSIZE, file);
+
+        if (bread < 0)
+        {
+            printf("error in fread()\n");
+        }
+
+        // send block
+        if (send(sock_data, data, bread, 0) < 0)
+            perror("error sending file\n");
+
+    } while (bread > 0);
+
+
+    // while ((bread = fread(data, 1, MAXSIZE, file)) > 0)
+    // {
+    //     if (send(sock_data, data, bread, 0) < 0)
+    //     {
+    //         perror("error sending file\n");
+    //     }
+    // }
+
+    // if (bread < 0)
+    // {
+    //     perror("error\n");
+    //     fclose(file);
+    //     return -2;
+    // }
+
+    // send message: 226: closing conn, file transfer successful
+    send_response(sock_control, 226);
+
+    fclose(file);
+    return 0;
+}
+
 void strtrim(char *str)
 {
     int i;
@@ -106,15 +230,13 @@ void strtrim(char *str)
     }
 }
 
-int send_response(int sockfd, int rc)
+void strlow(char *str)
 {
-    int conv = htonl(rc);
-    if (send(sockfd, &conv, sizeof conv, 0) < 0)
+    int i;
+    for (i = 0; str[i] != '\0'; i++)
     {
-        perror("error sending...\n");
-        return -1;
+        str[i] = tolower(str[i]);
     }
-    return 0;
 }
 
 void read_input(char *buffer, int size)
@@ -134,7 +256,7 @@ int readconfig(char *dest, char *path, char *key)
 {
     FILE *file;
     size_t len = 0;
-    char * fn = NULL;
+    char *fn = NULL;
     char delimiter[] = " ";
 
     if ((file = fopen(path, "r")) == NULL)
@@ -151,8 +273,8 @@ int readconfig(char *dest, char *path, char *key)
 
     while (getline(&fn, &len, file) != -1)
     {
-        char * c_key;
-        char * c_value;
+        char *c_key;
+        char *c_value;
 
         c_key = strtok_r(fn, delimiter, &c_value);
 
@@ -174,7 +296,7 @@ int readconfig(char *dest, char *path, char *key)
     return 0;
 }
 
-void tree(char *basePath, const int root, FILE * file)
+void tree(char *basePath, const int root, FILE *file)
 {
     int i;
     char path[1000];
@@ -188,23 +310,21 @@ void tree(char *basePath, const int root, FILE * file)
     {
         if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0)
         {
-            for (i=0; i<root; i++) 
+            for (i = 0; i < root; i++)
             {
-                if (i%2 == 0 || i == 0)
+                if (i % 2 == 0 || i == 0)
                 {
                     fprintf(file, "%c", ':');
                     // fprintf(file, "%c", 179);
-
                 }
                 else
                 {
                     fprintf(file, " ");
                 }
-
             }
 
             //fprintf(file ,"%c%c%s\n", 195, 196, dp->d_name);
-            fprintf(file ,"%c%c%s\n", '>', '-', dp->d_name);
+            fprintf(file, "%c%c%s\n", '>', '-', dp->d_name);
 
             strcpy(path, basePath);
             strcat(path, "/");
@@ -214,4 +334,27 @@ void tree(char *basePath, const int root, FILE * file)
     }
 
     closedir(dir);
+}
+
+void cripto(char *mess, char *key, int encoding)
+{
+    int l = strlen(key);
+    int i;
+    int k = encoding ? 1 : -1;
+    for (i = 0; mess[i]; i++)
+    {
+        mess[i] += k * (key[i % l] - '0');
+    }
+}
+
+char *statkey(char *srt)
+{
+    char *key = (char *)calloc(25, sizeof(char));
+    int l = strlen(srt);
+    int i;
+    for (i = 0; i < 25; i++)
+    {
+        key[i] = i * srt[i % l] % 10 + '0';
+    }
+    return key;
 }

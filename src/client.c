@@ -13,31 +13,11 @@ int read_reply()
     return ntohl(retcode);
 }
 
-void print_reply(int rc)
+int cmd_read(char * buf, struct command * cstruct, size_t size)
 {
-    switch (rc)
-    {
-    case 220:
-        printf("220 Welcome, server ready.\n");
-        break;
-    case 221:
-        printf("221 Goodbye!\n");
-        break;
-    case 226:
-        printf("226 Closing data connection. Requested file action successful.\n");
-        break;
-    case 550:
-        printf("550 Requested action not taken. File unavailable.\n");
-        break;
-    }
-}
-
-int read_command(char *buf, int size, struct command *cstruct)
-{
-    memset(cstruct->code, 0, sizeof(cstruct->code));
     memset(cstruct->arg, 0, sizeof(cstruct->arg));
 
-    printf("ftpclient> "); // prompt for input
+    printf("ftpclient> ");
     fflush(stdout);
 
     // wait for user to enter a command
@@ -45,6 +25,38 @@ int read_command(char *buf, int size, struct command *cstruct)
 
     char *arg = NULL;
     arg = strtok(buf, " ");
+
+    strlow(buf);
+
+    if (strcmp(buf, "list") == 0)
+    {
+        cstruct->code = cmd_list;
+    }
+    else if (strcmp(buf, "tree") == 0)
+    {
+        cstruct->code = cmd_tree;
+    }
+    else if (strcmp(buf, "get") == 0)
+    {
+        cstruct->code = cmd_get;
+    }
+    else if (strcmp(buf, "push") == 0)
+    {
+        cstruct->code = cmd_post;
+    }
+    else if (strcmp(buf, "mkdir") == 0)
+    {
+        cstruct->code = cmd_mdir;
+    }
+    else if (strcmp(buf, "quit") == 0)
+    {
+        cstruct->code = cmd_quit;
+    }
+    else
+    {
+        return -1;
+    }
+
     arg = strtok(NULL, " ");
 
     if (arg != NULL)
@@ -53,32 +65,13 @@ int read_command(char *buf, int size, struct command *cstruct)
         strncpy(cstruct->arg, arg, strlen(arg));
     }
 
-    // buf = command
-    if (strcmp(buf, "list") == 0)
-    {
-        strcpy(cstruct->code, "LIST");
-    }
-    else if (strcmp(buf, "get") == 0)
-    {
-        strcpy(cstruct->code, "RETR");
-    }
-    else if (strcmp(buf, "quit") == 0)
-    {
-        strcpy(cstruct->code, "QUIT");
-    }
-    else
-    { //invalid
-        return -1;
-    }
-
     // store code in beginning of buffer
-    memset(buf, 0, 400);
-    strcpy(buf, cstruct->code);
+    memset(buf, 0, sizeof(buf));
+    buf[0] = cstruct->code;
 
     // if there's an arg, append it to the buffer
     if (arg != NULL)
     {
-        strcat(buf, " ");
         strncat(buf, cstruct->arg, strlen(cstruct->arg));
     }
 
@@ -105,50 +98,50 @@ int get(int data_sock, int sock_control, char *arg)
     return 0;
 }
 
-int open_conn(int sock_con)
+int open_connection(int sock_control)
 {
-    int sock_listen = socket_create(CLIENT_PORT_ID);
+    int sock_listen = socket_create(CLIENT_PORT);
 
     // send an ACK on control conn
     int ack = 1;
-    if ((send(sock_con, (char *)&ack, sizeof(ack), 0)) < 0)
+    if ((send(sock_control, (char *)&ack, sizeof(ack), 0)) < 0)
     {
         printf("client: ack write error :%d\n", errno);
         exit(1);
     }
 
-    int sock_conn = socket_accept(sock_listen);
+    int sd = socket_accept(sock_listen);
     close(sock_listen);
-    return sock_conn;
+    return sd;
 }
 
-int list(int sock_data, int sock_con)
+int list(int sock_data, int sock_control)
 {
-    size_t num_recvd;  // number of bytes received with recv()
+    size_t bread;
     char buf[MAXSIZE]; // hold a filename received from server
     int tmp = 0;
 
     // Wait for server starting message
-    if (recv(sock_con, &tmp, sizeof tmp, 0) < 0)
+    if (recv(sock_control, &tmp, sizeof tmp, 0) < 0)
     {
         perror("client: error reading message from server\n");
         return -1;
     }
 
     memset(buf, 0, sizeof(buf));
-    while ((num_recvd = recv(sock_data, buf, MAXSIZE, 0)) > 0)
+    while ((bread = recv(sock_data, buf, MAXSIZE, 0)) > 0)
     {
         printf("%s", buf);
         memset(buf, 0, sizeof(buf));
     }
 
-    if (num_recvd < 0)
+    if (bread < 0)
     {
         perror("error");
     }
 
     // Wait for server done message
-    if (recv(sock_con, &tmp, sizeof tmp, 0) < 0)
+    if (recv(sock_control, &tmp, sizeof tmp, 0) < 0)
     {
         perror("client: error reading message from server\n");
         return -1;
@@ -161,7 +154,7 @@ int send_cmd(struct command *cmd)
     char buffer[MAXSIZE];
     int rc;
 
-    sprintf(buffer, "%s %s", cmd->code, cmd->arg);
+    sprintf(buffer, "%c%s", cmd->code, cmd->arg);
 
     // Send command string to server
     rc = send(sock_control, buffer, (int)strlen(buffer), 0);
@@ -186,7 +179,7 @@ void login()
     read_input(user, 256);
 
     // Send USER command to server
-    strcpy(cmd.code, "USER");
+    cmd.code = cmd_user;
     strcpy(cmd.arg, user);
     send_cmd(&cmd);
 
@@ -196,10 +189,13 @@ void login()
 
     // Get password from user
     fflush(stdout);
-    char *pass = getpass("Password: ");
+    char * pass = getpass("Password: ");
+    char * key = statkey(user);
+    cripto(pass, key, 1);
+    free(key);
 
     // Send PASS command to server
-    strcpy(cmd.code, "PASS");
+    cmd.code = cmd_pass;
     strcpy(cmd.arg, pass);
     send_cmd(&cmd);
 
@@ -229,12 +225,12 @@ int main(int argc, char *argv[])
 
     if (argc != 3)
     {
-        printf("usage: ./ftclient hostname port\n");
+        printf("usage: %s hostname port\n", argv[0]);
         exit(0);
     }
 
-    char *host = argv[1];
-    char *port = argv[2];
+    char * host = argv[1];
+    char * port = argv[2];
 
     // Get matching addresses
     memset(&hints, 0, sizeof(struct addrinfo));
@@ -270,17 +266,16 @@ int main(int argc, char *argv[])
     freeaddrinfo(rp);
 
     // Get connection, welcome messages
-    printf("Connected to %s.\n", host);
     print_reply(read_reply());
 
     /* Get name and password and send to server */
     login();
 
+    // loop until user types quit
     while (1)
-    { // loop until user types quit
-
+    {
         // Get a command from user
-        if (read_command(buffer, sizeof buffer, &cmd) < 0)
+        if (cmd_read(buffer, &cmd, sizeof buffer) < 0)
         {
             printf("Invalid command\n");
             continue; // loop back for another command
@@ -294,50 +289,52 @@ int main(int argc, char *argv[])
         }
 
         retcode = read_reply();
-        if (retcode == 221)
+
+        if (retcode != 200)
         {
-            /* If command was quit, just exit */
-            print_reply(221);
+            print_reply(retcode);
             break;
         }
 
-        if (retcode == 502)
+        // open data connection
+        if ((data_sock = open_connection(sock_control)) < 0)
         {
-            // If invalid command, show error message
-            printf("%d Invalid command.\n", retcode);
+            perror("Error opening socket for data connection");
+            exit(1);
         }
-        else
+        // execute command
+        switch (cmd.code)
         {
-            // Command is valid (RC = 200), process command
-
-            // open data connection
-            if ((data_sock = open_conn(sock_control)) < 0)
+        case cmd_list:
+        case cmd_tree:
+            list(data_sock, sock_control);
+            break;
+        case cmd_get:
+            // wait for reply (is file valid)
+            if (read_reply() == 550)
             {
-                perror("Error opening socket for data connection");
-                exit(1);
+                print_reply(550);
+                close(data_sock);
+                continue;
             }
-
-            // execute command
-            if (strcmp(cmd.code, "LIST") == 0)
-            {
-                list(data_sock, sock_control);
-            }
-            else if (strcmp(cmd.code, "RETR") == 0)
-            {
-                // wait for reply (is file valid)
-                if (read_reply() == 550)
-                {
-                    print_reply(550);
-                    close(data_sock);
-                    continue;
-                }
-                get(data_sock, sock_control, cmd.arg);
-                print_reply(read_reply());
-            }
-            close(data_sock);
+            get(data_sock, sock_control, cmd.arg);
+            print_reply(read_reply());
+            break;
+        case cmd_post:
+            // implementation
+        case cmd_mdir:
+        case cmd_quit:
+            /* code */
+            break;
+        
+        default:
+            break;
         }
 
-    } // loop back to get more user input
+        close(data_sock);
+
+        // loop back to get more user input
+    }
 
     // Close the socket (control connection)
     close(sock_control);

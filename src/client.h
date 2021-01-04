@@ -30,7 +30,7 @@ void print_reply(int rc);
 /**
  * Parse command in cstruct
  */ 
-int read_command(char* buf, int size, struct command *cstruct);
+int cmd_read(char * buf, struct command * cstruct, size_t size);
 
 /**
  * Do get <filename> command 
@@ -40,10 +40,11 @@ int get(int data_sock, int sock_control, char* arg);
 /**
  * Open data connection
  */
-int open_conn(int sock_con);
+int open_connection(int sock_con);
 
 /** 
- * Do list commmand
+ * Listing commmand
+ * List line by line server output
  */
 int list(int sock_data, int sock_con);
 

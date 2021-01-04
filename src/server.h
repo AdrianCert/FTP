@@ -15,8 +15,9 @@ void retr(int sock_control, int sock_data, char* filename);
  * over data connection
  * Return -1 on error, 0 on success
  */
-int list(int sock_data, int sock_control);
+int serv_list(int sock_data, int sock_control, char * path);
 
+int serv_tree(int sock_data, int sock_control, char * path);
 /**
  * Open data connection to client 
  * Returns: socket for data connection

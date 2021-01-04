@@ -1,7 +1,7 @@
 all:
-	make remove
-	make server
-	make client
+	@make -s remove
+	@make -s server
+	@make -s client
 
 mkpath:
 	mkdir -p ./../dist

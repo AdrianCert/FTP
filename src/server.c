@@ -1,7 +1,5 @@
 #include "server.h"
 
-
-
 void retr(int sock_control, int sock_data, char *filename)
 {
     FILE *fd = NULL;
@@ -42,21 +40,19 @@ void retr(int sock_control, int sock_data, char *filename)
     }
 }
 
-int list(int sock_data, int sock_control)
+int serv_list(int sock_data, int sock_control, char * path)
 {
     char data[MAXSIZE];
     size_t num_read;
     FILE *fd;
 
-    if(!(fd = fopen(".tmp", "w")))
+    sprintf(data, "ls -l %s| tail -n+2 > tmp.txt", path);
+    if ( system(data) < 0)
     {
         exit(1);
     }
-    
-    tree("./data", 0, fd);
 
-    fclose(fd);
-    if(!(fd = fopen(".tmp", "r")))
+    if(!(fd = fopen("tmp.txt", "r")))
     {
         exit(2);
     }
@@ -77,6 +73,53 @@ int list(int sock_data, int sock_control)
     }
 
     fclose(fd);
+    system("rm -f tmp.txt");
+
+    send_response(sock_control, 226); // send 226
+
+    return 0;
+}
+
+
+int serv_tree(int sock_data, int sock_control, char * path)
+{
+    char data[MAXSIZE];
+    size_t num_read;
+    FILE *fd;
+
+    if(!(fd = fopen(".tmp", "w")))
+    {
+        exit(1);
+    }
+    
+    // "./data"
+    tree(path, 0, fd);
+
+    fclose(fd);
+    if(!(fd = fopen(".tmp", "r")))
+    {
+        exit(2);
+    }
+
+    /* Seek to the beginning of the file */
+    fseek(fd, SEEK_SET, 0);
+
+    send_response(sock_control, 1); //starting
+
+    memset(data, 0, MAXSIZE);
+    while ((num_read = fread(data, 1, MAXSIZE, fd)) > 0)
+    {
+        fflush(stdout);
+
+        if (send(sock_data, data, num_read, 0) < 0)
+        {
+            perror("err");
+        }
+        memset(data, 0, MAXSIZE);
+    }
+
+    fclose(fd);
+    system("rm -f .tmp");
 
     send_response(sock_control, 226); // send 226
 
@@ -102,7 +145,7 @@ int start_data_conn(int sock_control)
     inet_ntop(AF_INET, &client_addr.sin_addr, buf, sizeof(buf));
 
     // Initiate data connection with client
-    if ((sock_data = socket_connect(CLIENT_PORT_ID, buf)) < 0)
+    if ((sock_data = socket_connect(CLIENT_PORT, buf)) < 0)
         return -1;
 
     return sock_data;
@@ -171,12 +214,9 @@ int login(int sock_control)
         exit(1);
     }
 
-    int i = 5;
-    int n = 0;
-    while (buf[i] != 0)
-    {
-        user[n++] = buf[i++];
-    }
+    strcpy(user, buf + 1);
+
+    char * key = statkey(user);
 
     // tell client we're ready for password
     send_response(sock_control, 331);
@@ -189,14 +229,9 @@ int login(int sock_control)
         exit(1);
     }
 
-    i = 5;
-    n = 0;
-    while (buf[i] != 0)
-    {
-        pass[n++] = buf[i++];
-    }
+    strcpy(pass, buf + 1);
+    cripto(pass, key, 0);
 
-    printf("%s$%s", user,pass);
     return (check_user(user, pass));
 }
 
@@ -206,7 +241,6 @@ int recv_cmd(int sock_control, char * cmd, char * arg)
     char buffer[MAXSIZE];
 
     memset(buffer, 0, MAXSIZE);
-    memset(cmd, 0, 5);
     memset(arg, 0, MAXSIZE);
 
     // Wait to recieve command
@@ -216,21 +250,19 @@ int recv_cmd(int sock_control, char * cmd, char * arg)
         return -1;
     }
 
-    strncpy(cmd, buffer, 4);
-    char *tmp = buffer + 5;
-    strcpy(arg, tmp);
+    *cmd = buffer[0];
+    strcpy(arg, buffer + 1);
 
-    if (strcmp(cmd, "QUIT") == 0)
+    if (*cmd == cmd_quit)
     {
         rc = 221;
     }
-    else if ((strcmp(cmd, "USER") == 0) || (strcmp(cmd, "PASS") == 0) ||
-             (strcmp(cmd, "LIST") == 0) || (strcmp(cmd, "RETR") == 0))
+    else if ( *cmd > cmd_begin && cmd_end > *cmd)
     {
         rc = 200;
     }
     else
-    { //invalid command
+    {
         rc = 502;
     }
 
@@ -241,8 +273,9 @@ int recv_cmd(int sock_control, char * cmd, char * arg)
 void serve_process(int sock_control)
 {
     int sock_data;
-    char cmd[5];
+    char cmd[1];
     char arg[MAXSIZE];
+    char cd[100] = "data";
 
     // Send welcome message
     send_response(sock_control, 220);
@@ -262,6 +295,8 @@ void serve_process(int sock_control)
     {
         // Wait for command
         int rc = recv_cmd(sock_control, cmd, arg);
+        printf("serverftp> comand %d %s\n", (int)*cmd, arg);
+        fflush(stdout);
 
         if ((rc < 0) || (rc == 221))
         {
@@ -278,13 +313,26 @@ void serve_process(int sock_control)
             }
 
             // Execute command
-            if (strcmp(cmd, "LIST") == 0)
-            { // Do list
-                list(sock_data, sock_control);
-            }
-            else if (strcmp(cmd, "RETR") == 0)
-            { // Do get <filename>
-                retr(sock_control, sock_data, arg);
+            switch (*cmd)
+            {
+            case cmd_list:
+                serv_list(sock_data, sock_control, cd);
+                break;
+            case cmd_tree:
+                serv_tree(sock_data, sock_control, cd);
+                break;
+            case cmd_get:
+                file_send(sock_control, sock_data, arg);
+                break;
+            case cmd_post:
+                // implementation
+            case cmd_mdir:
+            case cmd_quit:
+                /* code */
+                break;
+            
+            default:
+                break;
             }
 
             // Close data connection
@@ -307,6 +355,9 @@ int main(int argc, char ** argv)
     }
 
     port = atoi(s_port);
+
+    printf("servftp> Server start\n");
+    fflush(stdout);
 
     // create socket
     if ((sock_listen = socket_create(port)) < 0)
