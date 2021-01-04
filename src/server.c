@@ -40,14 +40,13 @@ void retr(int sock_control, int sock_data, char *filename)
     }
 }
 
-int serv_list(int sock_data, int sock_control, char * path)
+int serv_list(int sock_data, int sock_control)
 {
     char data[MAXSIZE];
     size_t num_read;
     FILE *fd;
 
-    sprintf(data, "ls -l %s| tail -n+2 > tmp.txt", path);
-    if ( system(data) < 0)
+    if ( system("ls -l | tail -n+2 > tmp.txt") < 0)
     {
         exit(1);
     }
@@ -81,7 +80,7 @@ int serv_list(int sock_data, int sock_control, char * path)
 }
 
 
-int serv_tree(int sock_data, int sock_control, char * path)
+int serv_tree(int sock_data, int sock_control)
 {
     char data[MAXSIZE];
     size_t num_read;
@@ -91,9 +90,8 @@ int serv_tree(int sock_data, int sock_control, char * path)
     {
         exit(1);
     }
-    
-    // "./data"
-    tree(path, 0, fd);
+
+    tree(".", 0, fd);
 
     fclose(fd);
     if(!(fd = fopen(".tmp", "r")))
@@ -275,7 +273,6 @@ void serve_process(int sock_control)
     int sock_data;
     char cmd[1];
     char arg[MAXSIZE];
-    char cd[100] = "data";
 
     // Send welcome message
     send_response(sock_control, 220);
@@ -290,6 +287,8 @@ void serve_process(int sock_control)
         send_response(sock_control, 430);
         exit(0);
     }
+
+    chdir("data");
 
     while (1)
     {
@@ -316,10 +315,10 @@ void serve_process(int sock_control)
             switch (*cmd)
             {
             case cmd_list:
-                serv_list(sock_data, sock_control, cd);
+                serv_list(sock_data, sock_control);
                 break;
             case cmd_tree:
-                serv_tree(sock_data, sock_control, cd);
+                serv_tree(sock_data, sock_control);
                 break;
             case cmd_get:
                 file_send(sock_control, sock_data, arg);
