@@ -166,9 +166,7 @@ int file_send(int sock_data, int sock_control, char *path)
     size_t bread;
     FILE *file = NULL;
 
-    char fpath[500] = "data/";
-    strncat(fpath, path, strlen(path));
-    file = fopen(fpath, "r");
+    file = fopen(path, "r");
     fflush(stdout);
     if (!file)
     {
@@ -176,7 +174,6 @@ int file_send(int sock_data, int sock_control, char *path)
         return -1;
     }
 
-    printf("##%s##\n", fpath);
     // send okay (150 File status okay)
     send_response(sock_control, 150);
 
@@ -194,22 +191,6 @@ int file_send(int sock_data, int sock_control, char *path)
             perror("error sending file\n");
 
     } while (bread > 0);
-
-
-    // while ((bread = fread(data, 1, MAXSIZE, file)) > 0)
-    // {
-    //     if (send(sock_data, data, bread, 0) < 0)
-    //     {
-    //         perror("error sending file\n");
-    //     }
-    // }
-
-    // if (bread < 0)
-    // {
-    //     perror("error\n");
-    //     fclose(file);
-    //     return -2;
-    // }
 
     // send message: 226: closing conn, file transfer successful
     send_response(sock_control, 226);

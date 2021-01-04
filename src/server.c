@@ -46,12 +46,12 @@ int serv_list(int sock_data, int sock_control)
     size_t num_read;
     FILE *fd;
 
-    if ( system("ls -l | tail -n+2 > tmp.txt") < 0)
+    if (system("ls -l | tail -n+2 > tmp.txt") < 0)
     {
         exit(1);
     }
 
-    if(!(fd = fopen("tmp.txt", "r")))
+    if (!(fd = fopen("tmp.txt", "r")))
     {
         exit(2);
     }
@@ -79,14 +79,13 @@ int serv_list(int sock_data, int sock_control)
     return 0;
 }
 
-
 int serv_tree(int sock_data, int sock_control)
 {
     char data[MAXSIZE];
     size_t num_read;
     FILE *fd;
 
-    if(!(fd = fopen(".tmp", "w")))
+    if (!(fd = fopen(".tmp", "w")))
     {
         exit(1);
     }
@@ -94,7 +93,7 @@ int serv_tree(int sock_data, int sock_control)
     tree(".", 0, fd);
 
     fclose(fd);
-    if(!(fd = fopen(".tmp", "r")))
+    if (!(fd = fopen(".tmp", "r")))
     {
         exit(2);
     }
@@ -214,7 +213,7 @@ int login(int sock_control)
 
     strcpy(user, buf + 1);
 
-    char * key = statkey(user);
+    char *key = statkey(user);
 
     // tell client we're ready for password
     send_response(sock_control, 331);
@@ -233,7 +232,7 @@ int login(int sock_control)
     return (check_user(user, pass));
 }
 
-int recv_cmd(int sock_control, char * cmd, char * arg)
+int recv_cmd(int sock_control, char *cmd, char *arg)
 {
     int rc = 200;
     char buffer[MAXSIZE];
@@ -255,7 +254,7 @@ int recv_cmd(int sock_control, char * cmd, char * arg)
     {
         rc = 221;
     }
-    else if ( *cmd > cmd_begin && cmd_end > *cmd)
+    else if (*cmd > cmd_begin && cmd_end > *cmd)
     {
         rc = 200;
     }
@@ -321,7 +320,7 @@ void serve_process(int sock_control)
                 serv_tree(sock_data, sock_control);
                 break;
             case cmd_get:
-                file_send(sock_control, sock_data, arg);
+                file_send(sock_data, sock_control, arg);
                 break;
             case cmd_post:
                 // implementation
@@ -329,7 +328,7 @@ void serve_process(int sock_control)
             case cmd_quit:
                 /* code */
                 break;
-            
+
             default:
                 break;
             }
@@ -340,14 +339,14 @@ void serve_process(int sock_control)
     }
 }
 
-int main(int argc, char ** argv)
+int main(int argc, char **argv)
 {
     int sock_listen, sock_control, port, pid;
     char s_port[25];
 
     system("mkdir -p ./data");
 
-    if( readconfig(s_port, "server.cfg", "port") == 0)
+    if (readconfig(s_port, "server.cfg", "port") == 0)
     {
         perror("Error reading config");
         exit(0);
