@@ -299,6 +299,7 @@ int main(int argc, char *argv[])
             print_reply(recv_code(sock_control));
             break;
         case cmd_mdir:
+            print_reply(recv_code(sock_control));
         case cmd_quit:
             /* code */
             break;

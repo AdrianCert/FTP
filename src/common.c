@@ -136,6 +136,9 @@ void print_reply(int rc)
     case 550:
         printf("550 Requested action not taken. File unavailable.\n");
         break;
+    case 551:
+        printf("551 Requested action not taken. Directory not created.\n");
+        break;
     case 502:
         printf("502 Command not implemented.\n");
         break;

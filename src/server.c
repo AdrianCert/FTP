@@ -123,9 +123,19 @@ int serv_tree(int sock_data, int sock_control)
     return 0;
 }
 
-int serv_mdir(int sock_data,int  sock_control)
+int serv_mdir(int sock_data, int sock_control, char *path)
 {
-    return 0;
+    struct stat st = {0};
+    if (stat(path, &st) == -1)
+    {
+        if(!mkdir(path, 0700))
+        {
+            send_response(sock_control, 226);
+            return 0;
+        }
+    }
+    send_response(sock_control, 551);
+    return -1;
 }
 
 int start_data_conn(int sock_control)
@@ -328,7 +338,7 @@ void serve_process(int sock_control)
                 file_send(sock_data, sock_control, arg);
                 break;
             case cmd_post:
-                if ( (rc = recv_code(sock_control)) == 150)
+                if ((rc = recv_code(sock_control)) == 150)
                 {
                     send_response(sock_control, 226);
                     file_recive(sock_data, sock_control, arg);
@@ -340,7 +350,7 @@ void serve_process(int sock_control)
                 }
                 break;
             case cmd_mdir:
-                serv_mdir(sock_data, sock_control);
+                serv_mdir(sock_data, sock_control, arg);
             case cmd_quit:
                 /* code */
                 break;
