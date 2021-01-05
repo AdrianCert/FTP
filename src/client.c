@@ -2,19 +2,9 @@
 
 int sock_control;
 
-int read_reply()
-{
-    int retcode = 0;
-    if (recv(sock_control, &retcode, sizeof retcode, 0) < 0)
-    {
-        perror("client: error reading message from server\n");
-        return -1;
-    }
-    return ntohl(retcode);
-}
-
 int cmd_read(char * buf, struct command * cstruct, size_t size)
 {
+    size_t size_buf = sizeof buf;
     memset(cstruct->arg, 0, sizeof(cstruct->arg));
 
     printf("ftpclient> ");
@@ -66,7 +56,7 @@ int cmd_read(char * buf, struct command * cstruct, size_t size)
     }
 
     // store code in beginning of buffer
-    memset(buf, 0, sizeof(buf));
+    memset(buf, 0, size_buf );
     buf[0] = cstruct->code;
 
     // if there's an arg, append it to the buffer
@@ -75,26 +65,6 @@ int cmd_read(char * buf, struct command * cstruct, size_t size)
         strncat(buf, cstruct->arg, strlen(cstruct->arg));
     }
 
-    return 0;
-}
-
-int get(int data_sock, int sock_control, char *arg)
-{
-    char data[MAXSIZE];
-    int size;
-    FILE *fd = fopen(arg, "w");
-
-    while ((size = recv(data_sock, data, MAXSIZE, 0)) > 0)
-    {
-        fwrite(data, 1, size, fd);
-    }
-
-    if (size < 0)
-    {
-        perror("error\n");
-    }
-
-    fclose(fd);
     return 0;
 }
 
@@ -200,7 +170,7 @@ void login()
     send_cmd(&cmd);
 
     // wait for response
-    int retcode = read_reply();
+    int retcode = recv_code(sock_control);
     switch (retcode)
     {
     case 430:
@@ -218,7 +188,7 @@ void login()
 
 int main(int argc, char *argv[])
 {
-    int data_sock, retcode, s;
+    int sock_data, retcode, s;
     char buffer[MAXSIZE];
     struct command cmd;
     struct addrinfo hints, *res, *rp;
@@ -266,7 +236,7 @@ int main(int argc, char *argv[])
     freeaddrinfo(rp);
 
     // Get connection, welcome messages
-    print_reply(read_reply());
+    print_reply(recv_code(sock_control));
 
     /* Get name and password and send to server */
     login();
@@ -288,7 +258,7 @@ int main(int argc, char *argv[])
             exit(1);
         }
 
-        retcode = read_reply();
+        retcode = recv_code(sock_control);
 
         if (retcode != 200)
         {
@@ -297,31 +267,37 @@ int main(int argc, char *argv[])
         }
 
         // open data connection
-        if ((data_sock = open_connection(sock_control)) < 0)
+        if ((sock_data = open_connection(sock_control)) < 0)
         {
             perror("Error opening socket for data connection");
             exit(1);
         }
+
+        int x;
         // execute command
         switch (cmd.code)
         {
         case cmd_list:
         case cmd_tree:
-            list(data_sock, sock_control);
+            list(sock_data, sock_control);
             break;
         case cmd_get:
             // wait for reply (is file valid)
-            if (read_reply() == 550)
+            x = recv_code(sock_control);
+            if ( x == 550)
             {
                 print_reply(550);
-                close(data_sock);
+                close(sock_data);
                 continue;
             }
-            get(data_sock, sock_control, cmd.arg);
-            print_reply(read_reply());
+            printf("read code before call recive %d\n", x);
+            file_recive(sock_data, sock_control, cmd.arg);
+            print_reply(recv_code(sock_control));
             break;
         case cmd_post:
-            // implementation
+            file_send(sock_data, sock_control, cmd.arg);
+            print_reply(recv_code(sock_control));
+            break;
         case cmd_mdir:
         case cmd_quit:
             /* code */
@@ -331,7 +307,7 @@ int main(int argc, char *argv[])
             break;
         }
 
-        close(data_sock);
+        close(sock_data);
 
         // loop back to get more user input
     }

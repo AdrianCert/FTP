@@ -21,6 +21,9 @@
 #define MAXSIZE 512
 #define CLIENT_PORT 30020
 
+#define dprintf( out, in, ...); if (DEBUG) { fprintf(out, in, __VA_ARGS__); fflush(out); }
+#define dprint(in, ... ); dprintf(stdout , in , __VA_ARGS__ );
+
 struct nfo {
     struct sockaddr_in addr;
     int sock_control;
@@ -80,6 +83,8 @@ int socket_connect(int port, char *host);
  * on success
  */
 int recv_data(int sockfd, char* buf, int bufsize);
+
+int recv_code(int sockfd);
 
 /**
  * Send resposne code on sockfd

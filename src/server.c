@@ -123,6 +123,11 @@ int serv_tree(int sock_data, int sock_control)
     return 0;
 }
 
+int serv_mdir(int sock_data,int  sock_control)
+{
+    return 0;
+}
+
 int start_data_conn(int sock_control)
 {
     char buf[1024];
@@ -323,8 +328,19 @@ void serve_process(int sock_control)
                 file_send(sock_data, sock_control, arg);
                 break;
             case cmd_post:
-                // implementation
+                if ( (rc = recv_code(sock_control)) == 150)
+                {
+                    send_response(sock_control, 226);
+                    file_recive(sock_data, sock_control, arg);
+                    recv_code(sock_control);
+                }
+                else
+                {
+                    send_response(sock_control, 550);
+                }
+                break;
             case cmd_mdir:
+                serv_mdir(sock_data, sock_control);
             case cmd_quit:
                 /* code */
                 break;

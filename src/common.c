@@ -94,6 +94,19 @@ int recv_data(int sockfd, char *buf, int bufsize)
     return num_bytes;
 }
 
+int recv_code(int sockfd)
+{
+    int retcode = 0;
+    if (recv(sockfd, &retcode, sizeof retcode, 0) < 0)
+    {
+        perror("client: error reading message from server\n");
+        return -1;
+    }
+
+    dprint("[debug] response %d read\n", ntohl(retcode));
+    return ntohl(retcode);
+}
+
 int send_response(int sockfd, int rc)
 {
     int conv = htonl(rc);
@@ -102,6 +115,8 @@ int send_response(int sockfd, int rc)
         perror("error sending...\n");
         return -1;
     }
+
+    dprint("[debug] response %d write\n", rc);
     return 0;
 }
 
@@ -135,14 +150,12 @@ int file_recive(int sock_data, int sock_control, char *path)
     char data[MAXSIZE];
     size_t bread;
     FILE *file = fopen(path, "w");
-    // wait for reply (is file valid)
-
-    // if (!file)
-    // {
-    //     // send error code (550 Requested action not taken)
-    //     send_response(sock_control, 550);
-    //     return -1;
-    // }
+    
+    if (!file)
+    {
+        send_response(sock_control, 550);
+        return -1;
+    }
 
     while ((bread = recv(sock_data, data, MAXSIZE, 0)) > 0)
     {
@@ -156,6 +169,8 @@ int file_recive(int sock_data, int sock_control, char *path)
         return -2;
     }
 
+    // dprint("[debug] exit file revice %d\n", bread);
+
     fclose(file);
     return 0;
 }
@@ -167,7 +182,7 @@ int file_send(int sock_data, int sock_control, char *path)
     FILE *file = NULL;
 
     file = fopen(path, "r");
-    fflush(stdout);
+
     if (!file)
     {
         send_response(sock_control, 550);
