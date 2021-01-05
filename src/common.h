@@ -45,6 +45,7 @@ enum command_codes {
     cmd_get, // get <filename>
     cmd_post, // push <filename>
     cmd_mdir, // mkdir <foldername>
+    cmd_cdir, // cd <foldername>
     cmd_user,
     cmd_pass,
     cmd_quit, // quit

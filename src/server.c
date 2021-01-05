@@ -1,57 +1,17 @@
 #include "server.h"
 
-void retr(int sock_control, int sock_data, char *filename)
-{
-    FILE *fd = NULL;
-    char data[MAXSIZE];
-    size_t num_read;
-
-    fd = fopen(filename, "r");
-
-    if (!fd)
-    {
-        // send error code (550 Requested action not taken)
-        send_response(sock_control, 550);
-    }
-    else
-    {
-        // send okay (150 File status okay)
-        send_response(sock_control, 150);
-
-        do
-        {
-            num_read = fread(data, 1, MAXSIZE, fd);
-
-            if (num_read < 0)
-            {
-                printf("error in fread()\n");
-            }
-
-            // send block
-            if (send(sock_data, data, num_read, 0) < 0)
-                perror("error sending file\n");
-
-        } while (num_read > 0);
-
-        // send message: 226: closing conn, file transfer successful
-        send_response(sock_control, 226);
-
-        fclose(fd);
-    }
-}
-
 int serv_list(int sock_data, int sock_control)
 {
     char data[MAXSIZE];
     size_t num_read;
     FILE *fd;
 
-    if (system("ls -l | tail -n+2 > tmp.txt") < 0)
+    if (system("ls -l | tail -n+2 > .tmp") < 0)
     {
         exit(1);
     }
 
-    if (!(fd = fopen("tmp.txt", "r")))
+    if (!(fd = fopen(".tmp", "r")))
     {
         exit(2);
     }
@@ -72,7 +32,7 @@ int serv_list(int sock_data, int sock_control)
     }
 
     fclose(fd);
-    system("rm -f tmp.txt");
+    system("rm -f .tmp");
 
     send_response(sock_control, 226); // send 226
 
@@ -85,7 +45,7 @@ int serv_tree(int sock_data, int sock_control)
     size_t num_read;
     FILE *fd;
 
-    if (!(fd = fopen(".tmp", "w")))
+    if (!(fd = fopen("../.tmp", "w")))
     {
         exit(1);
     }
@@ -93,7 +53,7 @@ int serv_tree(int sock_data, int sock_control)
     tree(".", 0, fd);
 
     fclose(fd);
-    if (!(fd = fopen(".tmp", "r")))
+    if (!(fd = fopen("../.tmp", "r")))
     {
         exit(2);
     }
@@ -116,7 +76,7 @@ int serv_tree(int sock_data, int sock_control)
     }
 
     fclose(fd);
-    system("rm -f .tmp");
+    system("rm -f ../.tmp");
 
     send_response(sock_control, 226); // send 226
 
@@ -135,6 +95,23 @@ int serv_mdir(int sock_data, int sock_control, char *path)
         }
     }
     send_response(sock_control, 551);
+    return -1;
+}
+
+int serv_cdir(int sock_data, int sock_control, char *path)
+{
+    if(chdir(path) == 0)
+    {
+        if( access( ".auth", F_OK ) == 0 )
+        {
+            chdir("data");
+            send_response(sock_control, 552);
+            return -1;
+        }
+        send_response(sock_control, 226);
+        return 0;
+    }
+    send_response(sock_control, 552);
     return -1;
 }
 
@@ -351,6 +328,10 @@ void serve_process(int sock_control)
                 break;
             case cmd_mdir:
                 serv_mdir(sock_data, sock_control, arg);
+                break;
+            case cmd_cdir:
+                serv_cdir(sock_data, sock_control, arg);
+                break;
             case cmd_quit:
                 /* code */
                 break;

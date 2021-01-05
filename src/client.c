@@ -38,6 +38,10 @@ int cmd_read(char * buf, struct command * cstruct, size_t size)
     {
         cstruct->code = cmd_mdir;
     }
+    else if (strcmp(buf, "cd") == 0)
+    {
+        cstruct->code = cmd_cdir;
+    }
     else if (strcmp(buf, "quit") == 0)
     {
         cstruct->code = cmd_quit;
@@ -299,11 +303,12 @@ int main(int argc, char *argv[])
             print_reply(recv_code(sock_control));
             break;
         case cmd_mdir:
+        case cmd_cdir:
             print_reply(recv_code(sock_control));
+            break;
         case cmd_quit:
             /* code */
             break;
-        
         default:
             break;
         }
