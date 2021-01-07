@@ -13,8 +13,8 @@ int cmd_read(char * buf, struct command * cstruct, size_t size)
     // wait for user to enter a command
     read_input(buf, size);
 
-    char *arg = NULL;
-    arg = strtok(buf, " ");
+    char *arg;
+    buf = strtok_r(buf, " ", &arg);
 
     strlow(buf);
 
@@ -46,6 +46,10 @@ int cmd_read(char * buf, struct command * cstruct, size_t size)
     {
         cstruct->code = cmd_remove;
     }
+    else if (strcmp(buf, "rename") == 0)
+    {
+        cstruct->code = cmd_rename;
+    }
     else if (strcmp(buf, "quit") == 0)
     {
         cstruct->code = cmd_quit;
@@ -54,8 +58,6 @@ int cmd_read(char * buf, struct command * cstruct, size_t size)
     {
         return -1;
     }
-
-    arg = strtok(NULL, " ");
 
     if (arg != NULL)
     {
@@ -306,6 +308,7 @@ int main(int argc, char *argv[])
         case cmd_mdir:
         case cmd_cdir:
         case cmd_remove:
+        case cmd_rename:
             break;
         case cmd_quit:
             /* code */

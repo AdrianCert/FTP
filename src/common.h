@@ -47,6 +47,7 @@ enum command_codes {
     cmd_mdir, // mkdir <foldername>
     cmd_cdir, // cd <foldername>
     cmd_remove, // rm <path>
+    cmd_rename, // rename <path_a> <path_b>
     cmd_user,
     cmd_pass,
     cmd_quit, // quit

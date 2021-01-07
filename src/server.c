@@ -88,7 +88,7 @@ int serv_mdir(int sock_control, char *path)
     struct stat st = {0};
     if (stat(path, &st) == -1)
     {
-        if(!mkdir(path, 0700))
+        if (!mkdir(path, 0700))
         {
             send_response(sock_control, 226);
             return 0;
@@ -100,9 +100,9 @@ int serv_mdir(int sock_control, char *path)
 
 int serv_cdir(int sock_control, char *path)
 {
-    if(chdir(path) == 0)
+    if (chdir(path) == 0)
     {
-        if( access( ".auth", F_OK ) == 0 )
+        if (access(".auth", F_OK) == 0)
         {
             chdir("data");
             send_response(sock_control, 552);
@@ -117,7 +117,7 @@ int serv_cdir(int sock_control, char *path)
 
 int serv_rm(int sock_control, char *path)
 {
-    if(is_file(path))
+    if (is_file(path))
     {
         dprint("This is a file %c", '!');
         if (remove(path) == 0)
@@ -129,14 +129,30 @@ int serv_rm(int sock_control, char *path)
     }
     else
     {
-        if( remove_directory(path) == 0)
+        if (remove_directory(path) == 0)
         {
             send_response(sock_control, 226);
             return 0;
         }
         send_response(sock_control, 555);
     }
-    
+
+    return -1;
+}
+
+int serv_rename(int sock_control, char *arg)
+{
+    char *path_a, *path_b, *ch;
+
+    path_a = strtok_r(arg, " ", &ch);
+    path_b = strtok_r(NULL, " ", &ch);
+
+    if (rename(path_a, path_b) == 0)
+    {
+        send_response(sock_control, 226);
+        return 0;
+    }
+    send_response(sock_control, 555);
     return -1;
 }
 
@@ -359,6 +375,9 @@ void serve_process(int sock_control)
                 break;
             case cmd_remove:
                 serv_rm(sock_control, arg);
+                break;
+            case cmd_rename:
+                serv_rename(sock_control, arg);
                 break;
             case cmd_quit:
                 /* code */
