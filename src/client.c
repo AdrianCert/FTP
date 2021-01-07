@@ -277,34 +277,30 @@ int main(int argc, char *argv[])
             exit(1);
         }
 
-        int x;
+        int rcrequest = 1;
         // execute command
         switch (cmd.code)
         {
         case cmd_list:
         case cmd_tree:
             list(sock_data, sock_control);
+            rcrequest = 0;
             break;
         case cmd_get:
             // wait for reply (is file valid)
-            x = recv_code(sock_control);
-            if ( x == 550)
+            if ( recv_code(sock_control) == 550)
             {
                 print_reply(550);
                 close(sock_data);
                 continue;
             }
-            printf("read code before call recive %d\n", x);
             file_recive(sock_data, sock_control, cmd.arg);
-            print_reply(recv_code(sock_control));
             break;
         case cmd_post:
             file_send(sock_data, sock_control, cmd.arg);
-            print_reply(recv_code(sock_control));
             break;
         case cmd_mdir:
         case cmd_cdir:
-            print_reply(recv_code(sock_control));
             break;
         case cmd_quit:
             /* code */
@@ -314,7 +310,10 @@ int main(int argc, char *argv[])
         }
 
         close(sock_data);
-
+        if(rcrequest)
+        {
+            print_reply(recv_code(sock_control));
+        }
         // loop back to get more user input
     }
 
