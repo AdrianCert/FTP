@@ -42,6 +42,10 @@ int cmd_read(char * buf, struct command * cstruct, size_t size)
     {
         cstruct->code = cmd_cdir;
     }
+    else if (strcmp(buf, "rm") == 0)
+    {
+        cstruct->code = cmd_remove;
+    }
     else if (strcmp(buf, "quit") == 0)
     {
         cstruct->code = cmd_quit;
@@ -301,6 +305,7 @@ int main(int argc, char *argv[])
             break;
         case cmd_mdir:
         case cmd_cdir:
+        case cmd_remove:
             break;
         case cmd_quit:
             /* code */

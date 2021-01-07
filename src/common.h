@@ -46,6 +46,7 @@ enum command_codes {
     cmd_post, // push <filename>
     cmd_mdir, // mkdir <foldername>
     cmd_cdir, // cd <foldername>
+    cmd_remove, // rm <path>
     cmd_user,
     cmd_pass,
     cmd_quit, // quit
@@ -148,4 +149,14 @@ void cripto(char * mess, char * key, int encoding);
  * Return a key
  */
 char * statkey( char * srt);
+
+/**
+ * Return if it is a file
+ */
+int is_file(const char *path);
+
+/**
+ * Remove directory recursively
+ */
+int remove_directory(const char *path);
 #endif

@@ -115,6 +115,31 @@ int serv_cdir(int sock_control, char *path)
     return -1;
 }
 
+int serv_rm(int sock_control, char *path)
+{
+    if(is_file(path))
+    {
+        dprint("This is a file %c", '!');
+        if (remove(path) == 0)
+        {
+            send_response(sock_control, 226);
+            return 0;
+        }
+        send_response(sock_control, 555);
+    }
+    else
+    {
+        if( remove_directory(path) == 0)
+        {
+            send_response(sock_control, 226);
+            return 0;
+        }
+        send_response(sock_control, 555);
+    }
+    
+    return -1;
+}
+
 int start_data_conn(int sock_control)
 {
     char buf[1024];
@@ -331,6 +356,9 @@ void serve_process(int sock_control)
                 break;
             case cmd_cdir:
                 serv_cdir(sock_control, arg);
+                break;
+            case cmd_remove:
+                serv_rm(sock_control, arg);
                 break;
             case cmd_quit:
                 /* code */
