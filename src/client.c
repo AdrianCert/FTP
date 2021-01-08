@@ -270,6 +270,12 @@ int main(int argc, char *argv[])
 
         retcode = recv_code(sock_control);
 
+        if( retcode == 403)
+        {
+            print_reply(403);
+            continue;
+        }
+
         if (retcode != 200)
         {
             print_reply(retcode);

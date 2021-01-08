@@ -49,6 +49,18 @@ int serv_rename(int sock_control, char *arg);
 int start_data_conn(int sock_control);
 
 /**
+ * Write in permision the permision for the user
+ * Return 0 at succes else -1
+ */
+int getpermision(char *username, char *permision);
+
+/**
+ * Return if the user has permision to use this command
+ * Return -1 on error
+ */
+int haspermison(int cmd, char *p);
+
+/**
  * Authenticate a user's credentials
  * Return 1 if authenticated, 0 if not
  */
@@ -57,7 +69,7 @@ int check_user(char *user, char *pass);
 /** 
  * Log in connected client
  */
-int login(int sock_control);
+int login(int sock_control, char *struser);
 
 /**
  * Wait for command from client and send response

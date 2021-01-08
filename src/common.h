@@ -25,15 +25,8 @@
 #define dprintf( out, in, ...); if (DEBUG) { fprintf(out, in, __VA_ARGS__); fflush(out); }
 #define dprint(in, ... ); dprintf(stdout , in , __VA_ARGS__ );
 
-struct nfo {
-    struct sockaddr_in addr;
-    int sock_control;
-    int sock_data;
-    char curent_dir[100];
-    int flags;
-};
-
-struct command {
+struct command
+{
     char code;
     char arg[255];
 };
@@ -52,15 +45,6 @@ enum command_codes {
     cmd_pass,
     cmd_quit, // quit
     cmd_end
-};
-
-enum err_code {
-    err_incorrect_handling,
-    err_net,
-    err_file,
-    err_alloc,
-    err_config,
-    err_misc
 };
 
 /**

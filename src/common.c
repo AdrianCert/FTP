@@ -133,6 +133,9 @@ void print_reply(int rc)
     case 226:
         printf("226 Closing data connection. Requested file action successful.\n");
         break;
+    case 403:
+        printf("403 Requested action not taken. No Permision.\n");
+        break;
     case 550:
         printf("550 Requested action not taken. File unavailable.\n");
         break;
@@ -267,13 +270,13 @@ int readconfig(char *dest, char *path, char *key)
     if ((file = fopen(path, "r")) == NULL)
     {
         perror("Error open file");
-        exit(err_file);
+        exit(1);
     }
 
     if ((fn = (char *)malloc(520 * sizeof(char))) == NULL)
     {
         perror("Unable to allocate fn");
-        exit(err_alloc);
+        exit(2);
     }
 
     while (getline(&fn, &len, file) != -1)

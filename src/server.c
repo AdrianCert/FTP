@@ -181,6 +181,51 @@ int start_data_conn(int sock_control)
     return sock_data;
 }
 
+int haspermison(int cmd, char *p)
+{
+    if( cmd <= cmd_begin || cmd >= cmd_end)
+    {
+        perror("command out of range\n");
+        exit(1);
+    }
+    return p[cmd - cmd_begin - 1] - '0';
+}
+
+int getpermision(char *username, char *permision)
+{
+    size_t bread;
+    size_t len = 0;
+    FILE *fd;
+
+    char *cuser, *perm, *line;
+    int p = -1;
+
+    fd = fopen(".perm", "r");
+    if (fd == NULL)
+    {
+        perror("file not found");
+        exit(1);
+    }
+
+    while ((bread = getline(&line, &len, fd)) != -1)
+    {
+        cuser = strtok_r(line, " ", &perm);
+        strtrim(perm);
+        // dprint("USER %s\nPERM %s\n", cuser, perm);
+
+        if (strcmp(cuser, username) == 0)
+        {
+            p = 1;
+            strcpy(permision, perm);
+            break;
+        }
+    }
+
+    free(line);
+    fclose(fd);
+    return p;
+}
+
 int check_user(char *user, char *pass)
 {
     char username[MAXSIZE];
@@ -228,7 +273,7 @@ int check_user(char *user, char *pass)
     return auth;
 }
 
-int login(int sock_control)
+int login(int sock_control, char *struser)
 {
     char buf[MAXSIZE];
     char user[MAXSIZE];
@@ -245,6 +290,7 @@ int login(int sock_control)
     }
 
     strcpy(user, buf + 1);
+    strcpy(struser, user);
 
     char *key = statkey(user);
 
@@ -296,7 +342,6 @@ int recv_cmd(int sock_control, char *cmd, char *arg)
         rc = 502;
     }
 
-    send_response(sock_control, rc);
     return rc;
 }
 
@@ -305,12 +350,14 @@ void serve_process(int sock_control)
     int sock_data;
     char cmd[1];
     char arg[MAXSIZE];
+    char permision[50];
+    char username[50];
 
     // Send welcome message
     send_response(sock_control, 220);
 
     // Authenticate user
-    if (login(sock_control) == 1)
+    if (login(sock_control, username) == 1)
     {
         send_response(sock_control, 230);
     }
@@ -319,6 +366,8 @@ void serve_process(int sock_control)
         send_response(sock_control, 430);
         exit(0);
     }
+
+    getpermision(username, permision);
 
     chdir("data");
 
@@ -334,8 +383,16 @@ void serve_process(int sock_control)
             break;
         }
 
+        if(haspermison((int)cmd[0], permision) == 0)
+        {
+            send_response(sock_control, 403);
+            continue;
+        }
+
         if (rc == 200)
         {
+            send_response(sock_control, 200);
+
             // Open data connection with client
             if ((sock_data = start_data_conn(sock_control)) < 0)
             {
@@ -415,7 +472,7 @@ int main(int argc, char **argv)
     if ((sock_listen = socket_create(port)) < 0)
     {
         perror("Error creating socket");
-        exit(err_net);
+        exit(0);
     }
 
     while (1)
