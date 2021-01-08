@@ -17,25 +17,9 @@
 #include "common.h"
 
 /**
- * Receive a response from server
- * Returns -1 on error, return code on success
- */
-int read_reply();
-
-/**
- * Print response message
- */
-void print_reply(int rc);
-
-/**
  * Parse command in cstruct
  */ 
 int cmd_read(char * buf, struct command * cstruct, size_t size);
-
-/**
- * Do get <filename> command 
- */
-int get(int data_sock, int sock_control, char* arg);
 
 /**
  * Open data connection

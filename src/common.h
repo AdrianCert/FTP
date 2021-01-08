@@ -34,8 +34,8 @@ struct nfo {
 };
 
 struct command {
-	char code;
-	char arg[255];
+    char code;
+    char arg[255];
 };
 
 enum command_codes {
@@ -88,6 +88,10 @@ int socket_connect(int port, char *host);
  */
 int recv_data(int sockfd, char* buf, int bufsize);
 
+/**
+ * Receive a response from sockfd
+ * Returns -1 on error, return code on success
+ */
 int recv_code(int sockfd);
 
 /**
@@ -95,6 +99,11 @@ int recv_code(int sockfd);
  * Returns -1 on error, 0 on success
  */
 int send_response(int sockfd, int rc);
+
+/**
+ * Print the message for reply code
+ */
+void print_reply(int rc);
 
 /**
  * Recive a file on sock data
@@ -160,4 +169,5 @@ int is_file(const char *path);
  * Remove directory recursively
  */
 int remove_directory(const char *path);
+
 #endif
