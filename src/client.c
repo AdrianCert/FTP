@@ -306,10 +306,10 @@ int main(int argc, char *argv[])
                 close(sock_data);
                 continue;
             }
-            file_recive(sock_data, sock_control, cmd.arg);
+            file_recive(sock_data, sock_control, cmd.arg, 1);
             break;
         case cmd_post:
-            file_send(sock_data, sock_control, cmd.arg);
+            file_send(sock_data, sock_control, cmd.arg, 1);
             break;
         case cmd_mdir:
         case cmd_cdir:

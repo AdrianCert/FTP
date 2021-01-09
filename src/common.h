@@ -94,14 +94,14 @@ void print_reply(int rc);
  * Save in path, comunicate with sock_control
  * return 0 for succes
  */
-int file_recive(int sock_data, int sock_control, char * path);
+int file_recive(int sock_data, int sock_control, char * path, int show_progress);
 
 /**
  * Recive a file on sock data
  * Save in path, comunicate with sock_control
  * return 0 for succes
  */
-int file_send(int sock_data, int sock_control, char * path);
+int file_send(int sock_data, int sock_control, char * path, int show_progress);
 
 /************************************************************/
 /******************** UTILITY FUNCTIONS *********************/
@@ -153,5 +153,15 @@ int is_file(const char *path);
  * Remove directory recursively
  */
 int remove_directory(const char *path);
+
+/**
+ * Show progress bar
+ */
+int progressbar(long int p,long int t);
+
+/**
+ * Return file size
+ */
+long int filesize(char *path);
 
 #endif

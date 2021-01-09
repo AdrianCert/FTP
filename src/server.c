@@ -410,12 +410,12 @@ void serve_process(int sock_control)
                 serv_tree(sock_data, sock_control);
                 break;
             case cmd_get:
-                file_send(sock_data, sock_control, arg);
+                file_send(sock_data, sock_control, arg, 0);
                 break;
             case cmd_post:
                 if ((rc = recv_code(sock_control)) == 150)
                 {
-                    file_recive(sock_data, sock_control, arg);
+                    file_recive(sock_data, sock_control, arg, 0);
                     recv_code(sock_control);
                     send_response(sock_control, 226);
                 }

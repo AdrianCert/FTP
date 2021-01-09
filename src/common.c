@@ -157,7 +157,7 @@ void print_reply(int rc)
     }
 }
 
-int file_recive(int sock_data, int sock_control, char *path)
+int file_recive(int sock_data, int sock_control, char *path, int show_progress)
 {
     char data[MAXSIZE];
     size_t bread;
@@ -169,9 +169,25 @@ int file_recive(int sock_data, int sock_control, char *path)
         return -1;
     }
 
+    long int filesize, filepart = 0;
+    char *eptr;
+    recv(sock_data, data, MAXSIZE, 0);
+    filesize = strtol(data, &eptr, 10);
+    memset(data, 0 , MAXSIZE);
+
     while ((bread = recv(sock_data, data, MAXSIZE, 0)) > 0)
     {
         fwrite(data, 1, bread, file);
+        filepart += bread;
+        if(show_progress)
+        {
+            progressbar(filepart, filesize);
+        }
+    }
+
+    if(show_progress)
+    {
+        printf("\n");
     }
 
     if (bread < 0)
@@ -187,11 +203,14 @@ int file_recive(int sock_data, int sock_control, char *path)
     return 0;
 }
 
-int file_send(int sock_data, int sock_control, char *path)
+int file_send(int sock_data, int sock_control, char *path, int show_progress)
 {
     char data[MAXSIZE];
     size_t bread;
     FILE *file = NULL;
+
+    long int fl = filesize(path);
+    long int fp = 0;
 
     file = fopen(path, "r");
 
@@ -203,6 +222,15 @@ int file_send(int sock_data, int sock_control, char *path)
 
     // send okay (150 File status okay)
     send_response(sock_control, 150);
+    memset(data, '*', MAXSIZE);
+    sprintf(data, "\r%ld", fl);
+    // dprint("\n%s\n", data);
+    
+    if (send(sock_data, data, MAXSIZE, 0) < 0)
+    {
+        perror("error sending file size\n");
+    }
+    memset(data, 0, MAXSIZE);
 
     do
     {
@@ -214,10 +242,22 @@ int file_send(int sock_data, int sock_control, char *path)
         }
 
         // send block
-        if (send(sock_data, data, bread, 0) < 0)
+        if (send(sock_data, data, bread, 0) != bread)
             perror("error sending file\n");
 
+        fp += bread;
+        if(show_progress)
+        {
+            progressbar(fp, fl);
+        }
+
     } while (bread > 0);
+
+    if(show_progress)
+    {
+        printf("\n");
+        fflush(stdout);
+    }
 
     // send message: 226: closing conn, file transfer successful
     send_response(sock_control, 226);
@@ -426,4 +466,37 @@ int remove_directory(const char *path)
     }
 
     return r;
+}
+
+int progressbar(long int p, long int t)
+{
+    char a = '-';
+    char b = '=';
+
+    int i, barlen = 60;
+
+    double procent = (double)p/(double)t;
+    int bar =  procent * barlen;
+
+    printf("\r%d%c", (int)(procent*100), '%');
+
+    for(i = 0; i < bar; i++)
+    {
+        printf("%c", b);
+    }
+    for(; i < barlen; i++)
+    {
+        printf("%c", a);
+    }
+
+    fflush(stdout);
+
+    return 0;
+}
+
+long int filesize(char *path)
+{
+    struct stat st;
+    stat(path, &st);
+    return st.st_size;
 }

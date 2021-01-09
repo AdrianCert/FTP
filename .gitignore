@@ -341,3 +341,14 @@ healthchecksdb
 /dist/data
 /dist/client_ftp
 /dist/server_ftp
+doc/documentation.aux
+doc/documentation.bbl
+doc/documentation.blg
+doc/documentation.fdb_latexmk
+doc/documentation.fls
+doc/documentation.out
+doc/documentation.synctex.gz
+doc
+dist/!server.cfg
+dist/!.auth/
+dist/!.perm/
