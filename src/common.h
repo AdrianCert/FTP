@@ -97,7 +97,7 @@ void print_reply(int rc);
 int file_recive(int sock_data, int sock_control, char * path, int show_progress);
 
 /**
- * Recive a file on sock data
+ * Send a file on sock data
  * Save in path, comunicate with sock_control
  * return 0 for succes
  */
@@ -114,7 +114,7 @@ int file_send(int sock_data, int sock_control, char * path, int show_progress);
 void strtrim(char * str);
 
 /**
- * Lower each string caractes.
+ * Lower each string characters.
  */
 void strlow(char *str);
 
